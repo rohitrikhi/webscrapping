@@ -1,20 +1,20 @@
 const puppeteer = require('puppeteer')
 const scrapeData = require('./dataScrapper')
 
-async function productReviewsController(req, res){
+async function productReviewsController(req, res) {
+    let isNextPage = false
+    let runonce = true
     let productLink = req.body.link
     let browser = await puppeteer.launch({
         headless: true
     })
     let page = await browser.newPage()
-    let isNextPage = false
-    let runonce = true
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+        if (request.resourceType() === 'image' || request.resourceType() === 'stylesheet' || request.resourceType() === 'other' || request.resourceType() === 'font') request.abort();
+        else request.continue();
+    });
     try {
-        await page.setRequestInterception(true);
-        page.on('request', (request) => {
-            if (request.resourceType() === 'image' || request.resourceType() === 'stylesheet' || request.resourceType() === 'other' || request.resourceType() === 'font') request.abort();
-            else request.continue();
-        });
         await page.goto(productLink, {
             waitUntil: 'domcontentloaded'
         })
@@ -25,7 +25,7 @@ async function productReviewsController(req, res){
             isNextPage = true;
             while (isNextPage) {
                 let href = ""
-                //selector of next button changes on next page for one time
+                //selector of next button changes on next page once
                 if (runonce) {
                     href = await page.$eval("#customerReviews > div:nth-child(7) > dl > dd > a", (elm) => elm.href)
                     runonce = false
@@ -50,8 +50,8 @@ async function productReviewsController(req, res){
         res.send(data)
         await browser.close()
     } catch (error) {
-        console.log(error);
-        res.status(501).send('Not Implemented')
+        // console.log(error);
+        res.send(String(error))
     }
 }
 
